@@ -21,18 +21,26 @@ pipeline {
                 '''
             }
         }
-        stage('Test'){
+        stage('Test') {
             agent {
                 docker {
                     image 'node:18-alpine'
                     reuseNode true
                 }
             }
-
-            steps{
+            steps {
                 sh '''
-                test -f build/index.html
-                npm test'''
+                    test -f build/index.html
+                    mkdir -p test-results
+                    CI=true JEST_JUNIT_OUTPUT_DIR=test-results \
+                    JEST_JUNIT_OUTPUT_NAME=junit.xml \
+                    npm test -- --watchAll=false --reporters=default --reporters=jest-junit
+                '''
+            }
+            post {
+                always {
+                    junit 'test-results/junit.xml'
+                }
             }
         }
     }
