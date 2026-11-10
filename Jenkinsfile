@@ -31,10 +31,7 @@ pipeline {
             steps {
                 sh '''
                     test -f build/index.html
-                    mkdir -p test-results
-                    CI=true JEST_JUNIT_OUTPUT_DIR=test-results \
-                    JEST_JUNIT_OUTPUT_NAME=junit.xml \
-                    npm test -- --watchAll=false --reporters=default --reporters=jest-junit
+                    npm test 
                 '''
             }
             post {
