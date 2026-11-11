@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        NETLIFY_SITE_ID = 'c2a1c17c-9d33-4195-901d-ad10c3e86db5'
+        NETLIFY_AUTH_TOKEN = credentials('netlify-token')
+    }
+
     stages {
         stage('Build') {
             agent {
@@ -21,7 +26,7 @@ pipeline {
             }
         }
 
-        stage('Unit tests') {
+        stage('Test') {
             agent {
                 docker {
                     image 'node:18-alpine'
@@ -36,7 +41,6 @@ pipeline {
             }
         }
 
-        /*
         stage('E2E') {
             agent {
                 docker {
@@ -45,27 +49,28 @@ pipeline {
                 }
             }
             steps {
+                  retry(3) {
+                    sh 'npm install serve'
+                 }
                 sh '''
-                    npm install serve
-                    node_modules/.bin/serve -s build &
-                    sleep 10
-                    npx playwright test --reporter=html
-                '''
-            }
+                  node_modules/.bin/serve -s build &
+                   sleep 10
+                  npx playwright test --reporter=html
+                  '''
+                }
             post {
                 always {
-                    publishHTML([
+                    publishHTML(target: [
                         allowMissing: false,
                         alwaysLinkToLastBuild: false,
                         keepAll: false,
                         reportDir: 'playwright-report',
                         reportFiles: 'index.html',
-                        reportName: 'Playwright HTML Report'
+                        reportName: 'Playwright Report'
                     ])
                 }
             }
         }
-        */
 
         stage('Deploy') {
             agent {
@@ -75,17 +80,16 @@ pipeline {
                 }
             }
             steps {
-                sh '''
-                    npm install netlify-cli
-                    node_modules/.bin/serve -s build &
+                retry(3) {
+                 sh 'npm install netlify-cli'
+             }
+              sh '''
+                 node_modules/.bin/netlify --version
+                 echo "Deploying to Netlify Site ID: $NETLIFY_SITE_ID"
+                 node_modules/.bin/netlify status
+                 node_modules/.bin/netlify deploy --dir=build --prod --no-build
                 '''
-            }
-        }
-    }
-
-    post {
-        always {
-            junit 'test-results/junit.xml'
+}
         }
     }
 }
